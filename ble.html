@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <script>
+    var bluetoothDevice
+    let options = {filters: [], optionalServices: []}
+
+    let serviceUuid = 0xfff0
+
+    // let characteristicUuid = 0xfff1; //! for notify
+    let characteristicUuid = 0xfff2; //! for read and write reponse
+
+    options.filters.push({services: [serviceUuid]})
+    options.optionalServices.push(serviceUuid)
+
+    let accept_all = {optionalServices: [serviceUuid], acceptAllDevices: true}
+
+    const onDisconnected = (event) => {
+        const device = event.target;
+        console.log(`> Device ${device.name} is disconnected.`);
+    }
+
+//? >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> notify <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    var myCharacteristic;
+    const onStartButtonClick = async () => {
+      let serviceUuid = "0000fff0-0000-1000-8000-00805f9b34fb";
+      let characteristicUuid = "0000fff1-0000-1000-8000-00805f9b34fb";
+      try {
+        console.log("Requesting Bluetooth Device...");
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{services: [serviceUuid]}]});
+
+        console.log("Connecting to GATT Server...");
+        const server = await device.gatt.connect();
+
+        console.log("Getting Service...");
+        const service = await server.getPrimaryService(serviceUuid);
+
+        console.log("Getting Characteristic...");
+        myCharacteristic = await service.getCharacteristic(characteristicUuid);
+
+        await myCharacteristic.startNotifications();
+        document.getElementById("notitool").innerHTML = 'Notifications started';
+        console.log("> Notifications started");
+        myCharacteristic.addEventListener("characteristicvaluechanged",
+            handleNotifications);
+      } catch(error) {
+        document.getElementById("notitool").innerHTML = 'error : ' + error;
+        console.log("Argh! " + error);
+      }
+    }
+
+    const onStopButtonClick = async () => {
+      if (myCharacteristic) {
+        try {
+          await myCharacteristic.stopNotifications();
+          document.getElementById("notitool").innerHTML = 'Notifications stopped';
+          console.log("> Notifications stopped");
+          myCharacteristic.removeEventListener("characteristicvaluechanged",
+              handleNotifications);
+        } catch(error) {
+            document.getElementById("notitool").innerHTML = 'error : ' + error;
+          console.log("Argh! " + error);
+        }
+      }
+    }
+
+    var myCharacteristic;
+    const onStartButtonClick2 = async () => {
+      // let serviceUuid = document.querySelector("#service").value;
+      // if (serviceUuid.startsWith("0x")) {
+      //   serviceUuid = parseInt(serviceUuid);
+      // }
+
+      // let characteristicUuid = document.querySelector("#characteristic").value;
+      // if (characteristicUuid.startsWith("0x")) {
+      //   characteristicUuid = parseInt(characteristicUuid);
+      // }
+      let serviceUuid = "battery_service";
+      let characteristicUuid = "battery_level";
+      try {
+        console.log("Requesting Bluetooth Device...");
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{services: [serviceUuid]}]});
+
+        console.log("Connecting to GATT Server...");
+        const server = await device.gatt.connect();
+
+        console.log("Getting Service...");
+        const service = await server.getPrimaryService(serviceUuid);
+
+        console.log("Getting Characteristic...");
+        myCharacteristic = await service.getCharacteristic(characteristicUuid);
+
+        await myCharacteristic.startNotifications();
+
+        document.getElementById("notibatt").innerHTML = 'Notifications started';
+        console.log("> Notifications started");
+        myCharacteristic.addEventListener("characteristicvaluechanged",
+            handleNotifications);
+      } catch(error) {
+        document.getElementById("notibatt").innerHTML = 'error : ' + error;
+        console.log("Argh! " + error);
+      }
+    }
+
+    const onStopButtonClick2 = async () => {
+      if (myCharacteristic) {
+        try {
+          await myCharacteristic.stopNotifications();
+          document.getElementById("notibatt").innerHTML = 'Notifications stopped';
+          console.log("> Notifications stopped");
+          myCharacteristic.removeEventListener("characteristicvaluechanged",
+              handleNotifications);
+        } catch(error) {
+            document.getElementById("notibatt").innerHTML = 'error : ' + error;
+          console.log("Argh! " + error);
+        }
+      }
+    }
+
+    function handleNotifications(event) {
+      let value = event.target.value;
+      let a = [];
+      // Convert raw data bytes to hex values just for the sake of showing something.
+      // In the "real" world, you"d use data.getUint8, data.getUint16 or even
+      // TextDecoder to process raw data bytes.
+      for (let i = 0; i < value.byteLength; i++) {
+        a.push("0x" + ("00" + value.getUint8(i).toString(16)).slice(-2));
+      }
+      console.log("> " + a.join(" "));
+      document.getElementById("noti").innerHTML = "> " + a.join(" ");
+    }
+  
+//* >>>>>>>>>>>>>>>>>>>>>>> wrtite <<<<<<<<<<<<<<<<<<
+    const writeHeartRate = () => {
+    document.getElementById("HeartRate").innerHTML = 'Requesting Bluetooth Device...';
+    console.log("Requesting Bluetooth Device...");
+    navigator.bluetooth
+      .requestDevice({ filters: [{ services: ["heart_rate"] }] })
+      .then((device) => device.gatt.connect())
+      .then((server) => server.getPrimaryService("heart_rate"))
+      .then((service) =>
+        service.getCharacteristic("heart_rate_control_point")
+      )
+      .then((characteristic) => {
+        // Writing 1 is the signal to reset energy expended.
+        const resetEnergyExpended = Uint8Array.of(1);
+        return characteristic.writeValue(resetEnergyExpended);
+      })
+      .then((_) => {
+        document.getElementById("HeartRate").innerHTML = 'Energy expended has been reset';
+        console.log("Energy expended has been reset.");
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("HeartRate").innerHTML = 'error : ' + error;
+      });
+  };
+
+  const writeTest = async() => {
+    try {
+        console.log('Requesting Bluetooth Device...');
+        const device  = await navigator.bluetooth.requestDevice(options);
+    
+        console.log('Connecting to GATT Server...');
+        const server = await device.gatt.connect();
+
+        await device.addEventListener('gattserverdisconnected', onDisconnected);
+    
+        console.log('Getting Service...');
+        const service = await server.getPrimaryService(serviceUuid);
+    
+        console.log('Getting Characteristic...');
+        const characteristic = await service.getCharacteristic(characteristicUuid);
+    
+        console.log("Writing...");
+        // data = Uint32Array.of(6161616161)
+        const encoder = new TextEncoder('utf-8');
+        const data1 = encoder.encode("data_1 ====> 'writeValue' on 'BluetoothRemoteGATTCharacteristic': Value can't exceed 512 bytes.");
+        const data2 = encoder.encode("data_2 ====> bf1d049c6791b9c7c884f7e7c5d9fef3c216808c");
+        const data3 = encoder.encode("data_3 ====> bf1d049c6791b9c7c884f7e7c5d9fef3c216808c");
+        await characteristic.writeValue(data1);
+        // document.getElementById("writetext").innerHTML = 'Write data1';
+        await characteristic.writeValue(data2);
+        // document.getElementById("writetext").innerHTML = 'Write data2';
+        await characteristic.writeValue(data3);
+        // document.getElementById("writetext").innerHTML = 'Write data3';
+        document.getElementById("writetext").innerHTML = 'Write success';
+        console.log('> write success');
+      } catch(error) {
+        document.getElementById("writetext").innerHTML = 'error : ' + error;
+        console.log('Argh! ' + error);
+      }
+    
+  };
+
+//* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Read <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+const readTest = () => {
+    try {
+        console.log("Requesting Bluetooth Device...");
+        navigator.bluetooth.requestDevice(options)
+        .then((device) => {
+            console.log("Connecting to GATT Server...");
+            device.addEventListener('gattserverdisconnected', onDisconnected)
+            return device.gatt.connect()
+        })
+        .then(server => {
+            console.log("Getting Service...");
+            return server.getPrimaryService(serviceUuid)
+        })
+        .then(service => {
+            console.log("Getting Characteristic...");
+            return service.getCharacteristic(characteristicUuid)
+        })
+        .then((characteristic) => {
+            console.log("Reading...");
+            return characteristic.readValue()
+            // .catch(error => console.log("error ===>", error))
+        })
+        .then((value) => {
+            let data = value.getUint8()
+            document.getElementById("readtext").innerHTML = "Read value =", data;
+            console.log("value ===>", data);
+        })
+        .catch((error) => {
+            console.error(error);
+        });
+    } catch (error) {
+        document.getElementById("readtext").innerHTML = 'error : ' + error;
+        console.log("Argh! " + error);
+    }
+  };
+
+    function onButtonClick() {
+      let filters = [];
+
+      filters.push({services: ['battery_service']});
+
+      navigator.bluetooth.requestDevice({filters: filters})
+      .then(device => {
+        return device.gatt.connect();
+      })
+      .then(server => {
+        console.log('Getting Battery Service...');
+        return server.getPrimaryService('battery_service');
+      })
+      .then(service => {
+        console.log('Getting Battery Level Characteristic...');
+        return service.getCharacteristic('battery_level');
+      })
+      .then(characteristic => {
+        document.getElementById("readBattery").innerHTML = 'Reading Battery Level...';
+        console.log('Reading Battery Level...');
+        return characteristic.readValue();
+      })
+      .then(value => {
+        let batteryLevel = value.getUint8(0);
+        // document.write('> Battery Level is ' + batteryLevel + '%');
+        document.getElementById("readBattery").innerHTML = 'Battery Level is ' + batteryLevel + '%';
+        console.log('> Battery Level is ' + batteryLevel + '%');
+      })
+      .catch(error => {
+        document.getElementById("readBattery").innerHTML = 'error : ' + error;
+        console.log('Argh! ' + error);
+      });
+    }
+  
+  </script>
+</head>
+<body>
+  <table>
+    <!-- <colgroup>
+      <col span="2" style="background-color:red">
+      <col style="background-color:yellow">
+    </colgroup> -->
+    <!-- <tr>
+      <th> </th>
+      <th> </th>
+      <th> </th>
+    </tr> -->
+    <tr>
+      <td><button onclick="onButtonClick()"><h1><c>Read Battery</c></h1></button>
+        </td>
+      <td><h3 id="readBattery" style="color:rgb(207, 45, 5);">Status Battery Level</h3></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><button onclick="writeHeartRate()"><h1><c>Reset HeartRate</c></h1></button></td>
+      <td><h3 id="HeartRate" style="color:rgb(207, 45, 5);">Status Reset HeartRate</h3></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><button onclick="writeTest()"><h1><d>Write Text</d></h1></button></td>
+      <td><h3 id="writetext" style="color:rgb(207, 45, 5);">Status Write Text</h3></td>
+      <td></td>
+    </tr>
+    <tr>
+        <td><button onclick="readTest()"><h1><d>Read Text</d></h1></button></td>
+        <td><h3 id="readtext" style="color:rgb(207, 45, 5);">Status Read Text</h3></td>
+        <td></td>
+      </tr>
+    <tr>
+      <td><h2>Notify > BLE Tool </h2></td>
+      <td> <button onclick="onStartButtonClick()"><h1><a>Start</a></h1></button><button onclick="onStopButtonClick()"><h1><b>Stop</b></h1></button></td>
+      <td><h3 id="notitool" style="color:rgb(207, 45, 5);">Status Notify</h3></td>
+    </tr>
+    <tr>
+      <td><h2>Notify > BLE SIM </h2></td>
+      <td><button onclick="onStartButtonClick2()"><h1><a>Start</a></h1></button><button onclick="onStopButtonClick2()"><h1><b>Stop</b></h1></button></td>
+      <td><h3 id="notibatt" style="color:rgb(207, 45, 5);">Status Notify</h3></td>
+    </tr>
+    <tr>
+        <td><h3 id="noti" style="color:rgb(207, 45, 5);">Notify value</h3></td>
+      </tr>
+  </table>
+  <!-- <h2 id="error" style="color:rgb(207, 45, 5);"></h2> -->
+</body>
+<style>
+  body {background-color: powderblue;}
+
+  a {color: blue;}
+  b {color: red;}
+  c {color: goldenrod;}
+  d {color: rgb(236, 149, 161);}
+  </style>
+</html>
